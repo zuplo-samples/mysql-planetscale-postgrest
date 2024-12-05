@@ -8,14 +8,6 @@ import { useState } from "react";
 // if you don't want built-in protection or caching)
 const REST_URL = `${process.env.NEXT_PUBLIC_API_URL}/api`;
 
-interface PostgrestResponse {
-  body: string;
-  constraints_satisfied: boolean;
-  page_total: number;
-  response_headers: Headers | null;
-  response_status: number | null;
-  total_result_set: number;
-}
 
 const SELECT_CODE_SAMPLE = `const { data, error } = await postgrest
       .from("playing_with_neon")
@@ -29,21 +21,38 @@ const getInsertCodeSample = (
       .insert({ name: ${name}, value: ${value} });`;
 
 export default function Home() {
-  const [neonData, setNeonData] = useState<string>();
+  const [neonData, setNeonData] = useState<unknown>();
   const [error, setError] = useState<string>();
   const [codeSample, setCodeSample] = useState<string>();
   const handleFetchClick = async () => {
     performFetch();
     setCodeSample(SELECT_CODE_SAMPLE);
   };
+  // const performFetch = async () => {
+  //   const postgrest = new PostgrestClient(REST_URL);
+  //   const { data, error } = await postgrest
+  //     .from("products")
+  //     .select("*")
+  //     .order("id", { ascending: false });
+  //   if (data) {
+  //     setNeonData(JSON.parse((data as unknown as PostgrestResponse[])[0].body));
+  //     setError(undefined);
+  //   }
+  //   if (error) {
+  //     setError(JSON.stringify(error, null, 2));
+  //     setNeonData(undefined);
+  //   }
+  // };
   const performFetch = async () => {
     const postgrest = new PostgrestClient(REST_URL);
     const { data, error } = await postgrest
-      .from("products")
+      .from("playing_with_neon")
       .select("*")
       .order("id", { ascending: false });
     if (data) {
-      setNeonData(JSON.parse((data as unknown as PostgrestResponse[])[0].body));
+      //setNeonData(JSON.parse((data as unknown as PostgrestResponse[])[0].body));
+      //setNeonData(data);
+      setNeonData(data);
       setError(undefined);
     }
     if (error) {
@@ -51,19 +60,38 @@ export default function Home() {
       setNeonData(undefined);
     }
   };
+  // const handleInsertClick = async () => {
+  //   const randomName = Math.random().toString(36).substring(7);
+  //   const random = Math.random();
+  //   const postgrest = new PostgrestClient(REST_URL, {
+  //     headers: {
+  //       Prefer: "return=minimal",
+  //     },
+  //   });
+  //   const { data, error } = await postgrest.from("products").insert({
+  //     name: randomName,
+  //     imageUrl: "https://example.com/500x500",
+  //     category_id: 1,
+  //   });
+  //   if (data) {
+  //     performFetch();
+  //   }
+  //   if (error) {
+  //     setError(JSON.stringify(error, null, 2));
+  //   }
+  //   setCodeSample(getInsertCodeSample(randomName, random));
+  // };
   const handleInsertClick = async () => {
     const randomName = Math.random().toString(36).substring(7);
     const random = Math.random();
     const postgrest = new PostgrestClient(REST_URL, {
       headers: {
-        Prefer: "return=minimal",
+        Prefer: "return=representation",
       },
     });
-    const { data, error } = await postgrest.from("products").insert({
-      name: randomName,
-      imageUrl: "https://example.com/500x500",
-      category_id: 1,
-    });
+    const { data, error } = await postgrest
+      .from("playing_with_neon")
+      .insert({ name: randomName, value: random });
     if (data) {
       performFetch();
     }
