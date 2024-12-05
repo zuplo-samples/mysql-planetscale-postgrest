@@ -9,8 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@planetscale/database": "^1.19.0",
-    "@subzerocloud/nodejs": "^0.1.15",
+    "@subzerocloud/rest": "^3.0.1",
     "@supabase/postgrest-js": "^1.17.7",
     "copy-webpack-plugin": "^12.0.2",
     "dotenv": "^16.4.7",
