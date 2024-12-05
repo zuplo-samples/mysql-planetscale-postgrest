@@ -71,6 +71,7 @@ export default function Home() {
     }
     if (error) {
       setError(JSON.stringify(error, null, 2));
+      setMysqlData(undefined);
     }
     setCodeSample(getInsertCodeSample(randomName));
   };
