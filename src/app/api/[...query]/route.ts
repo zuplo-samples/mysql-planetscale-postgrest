@@ -4,19 +4,17 @@ import Subzero, {
   Method,
   Statement,
 } from "@subzerocloud/nodejs";
-// NOTE: I want to get this working with Planetscale serverless SDK eventually
-// import { connect, Connection } from "@planetscale/database";
 import mysql, { PoolConfig } from "mariadb";
 
 const urlPrefix = "/api";
-const schema = process.env.DATABASE_NAME!; // My Planetscale Database name
+const schema = process.env.DATABASE_NAME!; // My Database name
 const dbType = "mysql";
 export const dynamic = "force-dynamic"; // static by default, unless reading the request
 
 let subzero: Subzero;
 const role = "admin"; // Is this right?
 const connectionParams: PoolConfig = {
-  connectionLimit: 35,
+  connectionLimit: 75,
   connectTimeout: 5 * 1000,
   insertIdAsNumber: true,
   bigIntAsNumber: true,

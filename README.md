@@ -1,6 +1,6 @@
 # MySQL PostgREST
 
-Demo application to build a REST API over a planetscale database.
+Demo application to build a PostgREST-compatible REST API over a MySQL database.
 
 ## Installation
 
