@@ -18,18 +18,19 @@ interface PostgrestResponse {
 }
 
 const SELECT_CODE_SAMPLE = `const { data, error } = await postgrest
-      .from("playing_with_neon")
+      .from("products")
       .select("*")
       .order("id", { ascending: false });`;
 const getInsertCodeSample = (
-  name: string,
-  value: number
-) => `const { data, error } = await postgrest
-      .from("playing_with_neon")
-      .insert({ name: ${name}, value: ${value} });`;
+  name: string
+) => `const { data, error } = await postgrest.from("products").insert({
+      name: ${name},
+      image_url: "https://example.com/500x500",
+      category_id: 1,
+    });`;
 
 export default function Home() {
-  const [neonData, setNeonData] = useState<string>();
+  const [mysqlData, setMysqlData] = useState<string>();
   const [error, setError] = useState<string>();
   const [codeSample, setCodeSample] = useState<string>();
   const handleFetchClick = async () => {
@@ -43,17 +44,18 @@ export default function Home() {
       .select("*")
       .order("id", { ascending: false });
     if (data) {
-      setNeonData(JSON.parse((data as unknown as PostgrestResponse[])[0].body));
+      setMysqlData(
+        JSON.parse((data as unknown as PostgrestResponse[])[0].body)
+      );
       setError(undefined);
     }
     if (error) {
       setError(JSON.stringify(error, null, 2));
-      setNeonData(undefined);
+      setMysqlData(undefined);
     }
   };
   const handleInsertClick = async () => {
     const randomName = Math.random().toString(36).substring(7);
-    const random = Math.random();
     const postgrest = new PostgrestClient(REST_URL, {
       headers: {
         Prefer: "return=minimal",
@@ -61,7 +63,7 @@ export default function Home() {
     });
     const { data, error } = await postgrest.from("products").insert({
       name: randomName,
-      imageUrl: "https://example.com/500x500",
+      image_url: "https://example.com/500x500",
       category_id: 1,
     });
     if (data) {
@@ -70,19 +72,20 @@ export default function Home() {
     if (error) {
       setError(JSON.stringify(error, null, 2));
     }
-    setCodeSample(getInsertCodeSample(randomName, random));
+    setCodeSample(getInsertCodeSample(randomName));
   };
   return (
     <div className="min-h-screen font-[family-name:var(--font-geist-sans)] flex p-8 items-center flex-col gap-y-4">
-      <header className="text-4xl font-medium text-green-400">
-        Neon PostgREST API Demo
+      <header className="text-4xl font-medium text-[#02758f]">
+        <span className="text-[#02758f]">My</span>
+        <span className="text-[#f29111]">SQL</span> PostgREST API Demo
       </header>
       <div>
-        A Supabase-like API DevX with Neon and PostgREST.{" "}
+        A Supabase-like API DevX with Mysql and PostgREST.{" "}
         <a
-          className="text-green-400 hover:text-green-500"
+          className="text-blue-500 hover:text-blue-600"
           target="_blank"
-          href="https://github.com/zuplo-samples/neon-postgrest"
+          href="https://github.com/zuplo-samples/mysql-postgrest"
         >
           Source
         </a>
@@ -91,13 +94,13 @@ export default function Home() {
       <div className="flex gap-x-4">
         <button
           onClick={handleFetchClick}
-          className="bg-white text-black rounded-lg w-fit font-mono p-4 hover:bg-green-600 hover:text-white"
+          className="bg-white text-black rounded-lg w-fit font-mono p-4 hover:bg-[#02758f] hover:text-white"
         >
           Fetch Table Data
         </button>
         <button
           onClick={handleInsertClick}
-          className="bg-white text-black rounded-lg w-fit font-mono p-4 hover:bg-green-600 hover:text-white"
+          className="bg-white text-black rounded-lg w-fit font-mono p-4 hover:bg-[#f29111] hover:text-white"
         >
           Add Random Data
         </button>
@@ -105,18 +108,18 @@ export default function Home() {
       {codeSample ? (
         <div className="w-full">
           <h2 className="text-2xl font-medium ">Code Sample</h2>
-          <div className="bg-slate-800 text-green-400 font-mono p-4 rounded-lg shadow-md w-full max-h-[50vh] overflow-auto">
+          <div className="bg-slate-800 text-white font-mono p-4 rounded-lg shadow-md w-full max-h-[50vh] overflow-auto">
             <pre className="overflow-auto">{codeSample}</pre>
           </div>
         </div>
       ) : null}
-      {neonData ? (
+      {mysqlData ? (
         <div className="w-full">
           <h2 className="text-2xl font-medium ">Data</h2>
 
-          <div className="bg-slate-800 text-green-400 font-mono p-4 rounded-lg shadow-md w-full max-h-[50vh] overflow-auto">
+          <div className="bg-slate-800 text-white font-mono p-4 rounded-lg shadow-md w-full max-h-[50vh] overflow-auto">
             <pre className="whitespace-pre-wrap break-words">
-              {JSON.stringify(neonData, null, 2)}
+              {JSON.stringify(mysqlData, null, 2)}
             </pre>
           </div>
         </div>
@@ -131,8 +134,8 @@ export default function Home() {
         <div className="flex gap-x-8 items-center w-full justify-center flex-wrap">
           <Image src="/vercel.svg" alt="Vercel Logo" width={32} height={32} />
           <Image
-            src="/neon-logo-dark-mono.svg"
-            alt="Neon Logo"
+            src="/mysql-logo-dark-mono.svg"
+            alt="Mysql Logo"
             width={78}
             height={32}
           />

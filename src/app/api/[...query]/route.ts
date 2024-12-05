@@ -6,20 +6,21 @@ import Subzero, {
 } from "@subzerocloud/nodejs";
 // NOTE: I want to get this working with Planetscale serverless SDK eventually
 // import { connect, Connection } from "@planetscale/database";
-import mysql from "mariadb";
+import mysql, { PoolConfig } from "mariadb";
 
 const urlPrefix = "/api";
-const schema = "planetrest"; // My Planetscale Database name
+const schema = process.env.DATABASE_NAME!; // My Planetscale Database name
 const dbType = "mysql";
 export const dynamic = "force-dynamic"; // static by default, unless reading the request
 
 let subzero: Subzero;
-const role = "Admin"; // Is this right?
-const connectionParams = {
-  connectionLimit: 10,
-  connectTimeout: 10 * 1000,
+const role = "admin"; // Is this right?
+const connectionParams: PoolConfig = {
+  connectionLimit: 35,
+  connectTimeout: 5 * 1000,
   insertIdAsNumber: true,
   bigIntAsNumber: true,
+  port: parseInt(process.env.DATABASE_PORT!),
   //rowsAsArray: true,
   host: process.env.DATABASE_HOST,
   user: process.env.DATABASE_USERNAME,
@@ -28,6 +29,7 @@ const connectionParams = {
   trace: true,
   ssl: {
     rejectUnauthorized: true,
+    ca: process.env.DATABASE_CA_CERTIFICATE,
   },
 };
 
@@ -72,8 +74,10 @@ async function initSubzero() {
     password: process.env.DATABASE_PASSWORD,
     allowPublicKeyRetrieval: true,
     trace: true,
+    port: parseInt(process.env.DATABASE_PORT!),
     ssl: {
       rejectUnauthorized: true,
+      ca: process.env.DATABASE_CA_CERTIFICATE,
     },
   };
   const db = await mysql.createConnection(connectionParams);
@@ -144,7 +148,13 @@ async function initSubzero() {
 
   // console.log("dbschema", JSON.stringify(dbSchema));
   // This seems to work
-  subzero = new Subzero(dbType, dbSchema);
+  try {
+    subzero = new Subzero(dbType, dbSchema);
+  } catch (e) {
+    console.error("Error initializing subzero:", e);
+  } finally {
+    await db.end();
+  }
 }
 
 function fmtMySqlEnv(env: QueryEnv): Statement {
@@ -191,24 +201,20 @@ async function handler(request: Request, method: Method) {
   const db = await subzeroDbPool.getConnection();
   try {
     // I don't think this works?
-    // await Promise.all([
-    //   // connection.execute("set role ?", [role]),
-    // ]);
+    await Promise.all([
+      db.query("set role ?", [role]),
+      db.query(envQuery, envParameters),
+    ]);
 
-    // console.log("envQuery", envQuery);
-    // console.log("envParameters", envParameters);
-    const envRes = await db.query(envQuery, envParameters);
-    // console.log("envRes", envRes);
-    // console.log("query", query);
-    // console.log("parameters", parameters);
-    // FIXME: This fails
-    result = (await db.query(query, parameters)).rows;
+    result = await db.query(query, parameters);
   } catch (e) {
     console.error(
       `Error performing query ${query} with parameters ${parameters}`,
       e
     );
     throw e;
+  } finally {
+    await db.release();
   }
 
   return new Response(JSON.stringify(result), {
