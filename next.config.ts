@@ -8,12 +8,12 @@ const nextConfig: NextConfig = {
         patterns: [
           // error is triggered during the build if the file is not there (but not actually used from here)
           {
-            from: "node_modules/@subzerocloud/nodejs/subzero_wasm_bg.wasm",
+            from: "node_modules/@subzerocloud/rest/subzero_wasm_bg.wasm",
             to: "server/app/rest/[...query]/subzero_wasm_bg.wasm",
           },
           // this is used on runtime
           {
-            from: "node_modules/@subzerocloud/nodejs/subzero_wasm_bg.wasm",
+            from: "node_modules/@subzerocloud/rest/subzero_wasm_bg.wasm",
             to: "server/vendor-chunks/subzero_wasm_bg.wasm",
           },
         ],

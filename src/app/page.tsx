@@ -2,20 +2,11 @@
 
 import { PostgrestClient } from "@supabase/postgrest-js";
 import { useState } from "react";
-// import Image from "next/image";
+import Image from "next/image";
 
 // Replace the NEXT_PUBLIC_API_URL with your Zuplo gateway URL (or your Vercel URL directly
 // if you don't want built-in protection or caching)
 const REST_URL = `${process.env.NEXT_PUBLIC_API_URL}/api`;
-
-interface PostgrestResponse {
-  body: string;
-  constraints_satisfied: boolean;
-  page_total: number;
-  response_headers: Headers | null;
-  response_status: number | null;
-  total_result_set: number;
-}
 
 const SELECT_CODE_SAMPLE = `const { data, error } = await postgrest
       .from("products")
@@ -30,7 +21,7 @@ const getInsertCodeSample = (
     });`;
 
 export default function Home() {
-  const [mysqlData, setMysqlData] = useState<string>();
+  const [mysqlData, setMysqlData] = useState<unknown>();
   const [error, setError] = useState<string>();
   const [codeSample, setCodeSample] = useState<string>();
   const handleFetchClick = async () => {
@@ -44,9 +35,7 @@ export default function Home() {
       .select("*")
       .order("id", { ascending: false });
     if (data) {
-      setMysqlData(
-        JSON.parse((data as unknown as PostgrestResponse[])[0].body)
-      );
+      setMysqlData(data);
       setError(undefined);
     }
     if (error) {
@@ -58,7 +47,7 @@ export default function Home() {
     const randomName = Math.random().toString(36).substring(7);
     const postgrest = new PostgrestClient(REST_URL, {
       headers: {
-        Prefer: "return=minimal",
+        Prefer: "return=representation",
       },
     });
     const { data, error } = await postgrest.from("products").insert({
@@ -67,7 +56,7 @@ export default function Home() {
       category_id: 1,
     });
     if (data) {
-      performFetch();
+      await performFetch();
     }
     if (error) {
       setError(JSON.stringify(error, null, 2));
@@ -130,21 +119,16 @@ export default function Home() {
           <pre className="whitespace-pre-wrap break-words">{error}</pre>
         </div>
       )}
-      {/* <footer className="w-full justify-self-end mt-8">
+      <footer className="w-full justify-self-end mt-8">
         <div className="flex justify-center text-xl pb-3">BUILT WITH</div>
         <div className="flex gap-x-8 items-center w-full justify-center flex-wrap">
           <Image src="/vercel.svg" alt="Vercel Logo" width={32} height={32} />
-          <Image
-            src="/mysql-logo-dark-mono.svg"
-            alt="Mysql Logo"
-            width={78}
-            height={32}
-          />
+          <Image src="/aiven.png" alt="Aiven Logo" width={40} height={40} />
           <Image src="/zuplo.svg" alt="Zuplo Logo" width={78} height={32} />
           <Image src="/next.svg" alt="NextJS Logo" width={78} height={32} />
           <Image src="/subzero.png" alt="Subzero Logo" width={40} height={40} />
         </div>
-      </footer> */}
+      </footer>
     </div>
   );
 }

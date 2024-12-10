@@ -1,0 +1,9 @@
+[
+  {
+    "table_schema": "defaultdb",
+    "table_name": "products",
+    "role": "admin",
+    "grant": ["all"],
+    "using": [{ "sql": "true" }]
+  }
+]

@@ -2,17 +2,19 @@ import Subzero, {
   SubzeroError,
   Env as QueryEnv,
   Method,
-  Statement,
-} from "@subzerocloud/nodejs";
+  getIntrospectionQuery,
+  fmtMySqlEnv,
+} from "@subzerocloud/rest";
 import mysql, { PoolConfig } from "mariadb";
-
+import { resolve } from "path";
+import { readFileSync, existsSync } from "fs";
 const urlPrefix = "/api";
-const schema = process.env.DATABASE_NAME!; // My Database name
+const schema = process.env.DATABASE_NAME!;
 const dbType = "mysql";
 export const dynamic = "force-dynamic"; // static by default, unless reading the request
 
 let subzero: Subzero;
-const role = "admin"; // Is this right?
+const role = "admin"; // Set according to permissions.json
 const connectionParams: PoolConfig = {
   connectionLimit: 75,
   connectTimeout: 5 * 1000,
@@ -25,145 +27,77 @@ const connectionParams: PoolConfig = {
   password: process.env.DATABASE_PASSWORD,
   allowPublicKeyRetrieval: true,
   trace: true,
+  database: schema,
   ssl: {
     rejectUnauthorized: true,
     ca: process.env.DATABASE_CA_CERTIFICATE,
   },
 };
 
-// WARNING! do not use this connection pool in other routes since the connections hold special user defined variables
-// that might interfere with other queries
+// WARNING! do not use this connection pool in other routes since the
+// connections hold special user defined variables that might interfere with
+// other queries
 const subzeroDbPool = mysql.createPool(connectionParams);
 
-function getJsonSchemaType(mysqlType: string): string {
-  if (mysqlType.startsWith("tinyint(1)")) {
-    return "number";
-  } else if (mysqlType.includes("int")) {
-    return "number";
-  } else if (
-    mysqlType.includes("decimal") ||
-    mysqlType.includes("double") ||
-    mysqlType.includes("float")
-  ) {
-    return "number";
-  } else if (
-    mysqlType.includes("datetime") ||
-    mysqlType.includes("timestamp")
-  ) {
-    return "string";
-  } else if (mysqlType.includes("date")) {
-    return "string";
-  } else if (mysqlType.includes("time")) {
-    return "string";
-  }
-  return "string";
-}
-
-async function initSubzero() {
-  // NOTE: This does not seem to work
-  // const { query, parameters } = getIntrospectionQuery(
-  //   dbType,
-  //   schema // the schema name that is exposed to the HTTP api (ex: public, api)
-  // );
-
-  const connectionParams: mysql.ConnectionConfig = {
-    host: process.env.DATABASE_HOST,
-    user: process.env.DATABASE_USERNAME,
-    password: process.env.DATABASE_PASSWORD,
-    allowPublicKeyRetrieval: true,
-    trace: true,
-    port: parseInt(process.env.DATABASE_PORT!),
-    ssl: {
-      rejectUnauthorized: true,
-      ca: process.env.DATABASE_CA_CERTIFICATE,
-    },
-  };
-  const db = await mysql.createConnection(connectionParams);
-  // Alternative way of introspecting, similar to airbyte
-  // Seems to work but unsure if I am missing something
-  // https://github.com/planetscale/airbyte-source/blob/c1ab01c5c4ca525b86d98a33dae27f280b516bb0/cmd/internal/planetscale_edge_database.go#L69
-  const tableRes: Array<Record<string, string>> = await db.query(
-    `show tables from ${schema}`
+async function introspectDatabaseSchema() {
+  const permissionsFile = resolve(
+    process.cwd(),
+    "src/app/api/[...query]/permissions.json"
   );
-  const tableNames = tableRes.map((row) => row[`Tables_in_${schema}`]);
-  // console.log("Table names:", tableNames);
-  const dbSchema: {
-    use_internal_permissions: boolean;
-    schemas: Array<{
-      name: string;
-      objects: Array<{
-        name: string;
-        kind: string;
-        foreign_keys: Array<unknown>;
-        permissions: Array<unknown>;
-        columns: Array<{
-          name: string;
-          primary_key: boolean;
-          data_type: string;
-        }>;
-      }>;
-    }>;
-  } = {
-    use_internal_permissions: false,
-    schemas: [],
-  };
-  for (const tableName of tableNames) {
-    const columns: Array<{ COLUMN_NAME: string; COLUMN_TYPE: string }> =
-      await db.query(
-        `select column_name, column_type from information_schema.columns where table_name=? AND table_schema=?;`,
-        [tableName, schema]
-      );
-    const primaryKeys: Array<{ COLUMN_NAME: string }> = await db.query(
-      `select column_name from information_schema.columns where table_name=? AND table_schema=? AND column_key='PRI';`,
-      [tableName, schema]
-    );
-    // console.log("Columns:", columns);
-    // console.log("Primary keys:", primaryKeys);
-    const colData = columns.map((column) => {
-      return {
-        name: column.COLUMN_NAME,
-        primary_key: primaryKeys.some(
-          (pk) => pk.COLUMN_NAME === column.COLUMN_NAME
-        ),
-        // Do mysql types work with subzero? I converted to generic JSON schema types just in case
-        data_type: getJsonSchemaType(column.COLUMN_TYPE),
-      };
-    });
-
-    dbSchema.schemas.push({
-      name: schema,
-      objects: [
-        {
-          name: tableName,
-          kind: "table",
-          columns: colData,
-          foreign_keys: [],
-          permissions: [],
-        },
-      ],
-    });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let permissions: any[] = [];
+  if (existsSync(permissionsFile)) {
+    permissions = JSON.parse(readFileSync(permissionsFile, "utf8"));
+  } else {
+    console.error("permissions file not found", permissionsFile);
   }
-
-  // console.log("dbschema", JSON.stringify(dbSchema));
-  // This seems to work
-  try {
-    subzero = new Subzero(dbType, dbSchema);
-  } catch (e) {
-    console.error("Error initializing subzero:", e);
-  } finally {
-    await db.end();
-  }
+  const { query, parameters } = getIntrospectionQuery(
+    dbType,
+    [schema], // the schema/database that is exposed to the HTTP api
+    // the introspection query has two 'placeholders' to adapt to different configurations
+    new Map([
+      ["relations.json", []], // custom relations - empty for now
+      ["permissions.json", permissions],
+    ])
+  );
+  const db = await mysql.createConnection(connectionParams);
+  const result = await db.query(query, parameters);
+  const dbSchema = result[0].json_schema;
+  await db.end();
+  return dbSchema;
 }
 
-function fmtMySqlEnv(env: QueryEnv): Statement {
-  const parameters: any[] = [];
-  const queryParts: string[] = [];
-  env.forEach(([key, value], _i) => {
-    queryParts.push(`@${key} = ?`);
-    parameters.push(value);
-  });
-  const query = `set ${queryParts.join(", ")}`;
-  return { query, parameters };
+// Initialize the subzero instance that parses and formats queries
+let initializing = false;
+async function initSubzero() {
+  if (initializing) {
+    return;
+  }
+  initializing = true;
+
+  let wait = 0.5;
+  let retries = 0;
+  const maxRetries = 3; // You can adjust this or make it configurable
+
+  while (!subzero) {
+    try {
+      const dbSchema = await introspectDatabaseSchema();
+      subzero = new Subzero(dbType, dbSchema);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : e;
+      retries++;
+      if (maxRetries > 0 && retries > maxRetries) {
+        throw e;
+      }
+      wait = Math.min(10, wait * 2); // Max 10 seconds between retries
+      console.error(
+        `Failed to connect to database (${message}), retrying in ${wait} seconds...`
+      );
+      await new Promise((resolve) => setTimeout(resolve, wait * 1000));
+    }
+  }
+
+  initializing = false;
 }
 
 // Similar implementation to Subzero's handler: https://github.com/subzerocloud/showcase/blob/main/node-myrest/src/server.ts#L234
@@ -187,34 +121,77 @@ async function handler(request: Request, method: Method) {
     ["request.jwt.claims", JSON.stringify({})],
   ];
   const { query: envQuery, parameters: envParameters } = fmtMySqlEnv(queryEnv);
-  const { query, parameters } = await subzero.fmtStatement(
-    schema,
-    `${urlPrefix}/`,
-    role,
-    request,
-    queryEnv
-  );
-
-  let result: Record<string, unknown>[];
   const db = await subzeroDbPool.getConnection();
-  try {
-    // I don't think this works?
-    await Promise.all([
-      db.query("set role ?", [role]),
-      db.query(envQuery, envParameters),
-    ]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let result: any;
 
-    result = await db.query(query, parameters);
+  try {
+    await db.query("BEGIN");
+    await db.query(envQuery, envParameters);
+
+    if (method === "GET") {
+      const { query, parameters } = await subzero.fmtStatement(
+        schema,
+        `${urlPrefix}/`,
+        role,
+        request,
+        queryEnv
+      );
+      const rows = await db.query(query, parameters);
+      result = rows[0].body ? JSON.parse(rows[0].body) : null;
+    } else {
+      const statement = await subzero.fmtTwoStepStatement(
+        schema,
+        `${urlPrefix}/`,
+        role,
+        request,
+        queryEnv
+      );
+      const { query: mutate_query, parameters: mutate_parameters } =
+        statement.fmtMutateStatement();
+      const rows = await db.query(mutate_query, mutate_parameters);
+      const { insertId, affectedRows } = rows;
+
+      if (insertId > 0 && affectedRows > 0) {
+        const ids = Array.from(
+          { length: affectedRows },
+          (_, i) => insertId + i
+        );
+        statement.setMutatedRows(ids);
+      } else {
+        const idRows = await db.query(`
+          select t.val 
+          from json_table(
+              @subzero_ids, 
+              '$[*]' columns (val integer path '$')
+          ) as t
+          left join json_table(
+              @subzero_ignored_ids, 
+              '$[*]' columns (val integer path '$')
+          ) as t2 on t.val = t2.val
+          where t2.val is null;
+        `);
+        statement.setMutatedRows(idRows);
+      }
+
+      const returnRepresentation = request.headers
+        .get("Prefer")
+        ?.includes("return=representation");
+      if (returnRepresentation) {
+        const { query: select_query, parameters: select_parameters } =
+          statement.fmtSelectStatement();
+        const selectResult = await db.query(select_query, select_parameters);
+        result = selectResult[0].body ? JSON.parse(selectResult[0].body) : null;
+      }
+    }
+
+    await db.query("COMMIT");
   } catch (e) {
-    console.error(
-      `Error performing query ${query} with parameters ${parameters}`,
-      e
-    );
+    await db.query("ROLLBACK");
     throw e;
   } finally {
-    await db.release();
+    await db.end();
   }
-
   return new Response(JSON.stringify(result), {
     status: 200,
     headers: {
