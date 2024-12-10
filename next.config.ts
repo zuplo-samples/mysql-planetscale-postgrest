@@ -21,11 +21,19 @@ const nextConfig: NextConfig = {
             from: "node_modules/@subzerocloud/rest/subzero_wasm_bg.wasm",
             to: "server/src/app/api/[...query]/subzero_wasm_bg.wasm",
           },
+          {
+            from: "node_modules/@subzerocloud/rest/subzero_wasm_bg.wasm",
+            to: ".next/server/chunks/subzero_wasm_bg.wasm",
+          },
         ],
       })
     );
 
     return config;
+  },
+  outputFileTracingIncludes: {
+    "/api/**/*": ["./node_modules/**/*.wasm"],
+    "/src/api/**/*": ["./node_modules/**/*.wasm"],
   },
 };
 
