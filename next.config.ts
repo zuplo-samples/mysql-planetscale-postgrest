@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import CopyPlugin from "copy-webpack-plugin";
+import path from "path";
 
 const nextConfig: NextConfig = {
   webpack: (config) => {
@@ -31,12 +32,14 @@ const nextConfig: NextConfig = {
 
     return config;
   },
+  outputFileTracingRoot: path.join(__dirname),
   outputFileTracingIncludes: {
     "/api/**/*": ["./node_modules/**/*.wasm"],
     "/src/api/**/*": ["./node_modules/**/*.wasm"],
     "/src/app/api/**/*": ["./node_modules/**/*.wasm"],
     "/app/api/**/*": ["./node_modules/**/*.wasm"],
   },
+  serverExternalPackages: ["@subzerocloud/rest"],
 };
 
 export default nextConfig;
