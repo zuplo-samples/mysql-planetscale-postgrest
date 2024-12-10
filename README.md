@@ -1,6 +1,6 @@
 # MySQL PostgREST
 
-Do you wish you could interact with your MySQL database via API/SDK like Supabase? Look no further! This project shows you exactly how to recreate the Supabase/PostgREST API and developer experience. [Try the demo](https://mysql-postgrest.zuplopreview.net/).
+Do you wish you could interact with your MySQL database via API/SDK like Supabase? Look no further! This project shows you exactly how to recreate the Supabase/PostgREST API and developer experience. [Try the demo](https://mysql-postgrest.zuplopreview.net/). You can also [read the walkthrough](https://zuplo.com/blog/2024/12/10/mysql-postgrest-rest-api) to get a better sense of how this works.
 
 ## Installation
 
