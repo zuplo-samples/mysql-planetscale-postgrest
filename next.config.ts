@@ -34,6 +34,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/**/*": ["./node_modules/**/*.wasm"],
     "/src/api/**/*": ["./node_modules/**/*.wasm"],
+    "/src/app/api/**/*": ["./node_modules/**/*.wasm"],
+    "/app/api/**/*": ["./node_modules/**/*.wasm"],
   },
 };
 
