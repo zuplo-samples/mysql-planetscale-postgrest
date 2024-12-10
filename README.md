@@ -1,6 +1,6 @@
 # MySQL PostgREST
 
-Do you wish you could interact with your MySQL database via API/SDK like Supabase? Look no further! This project shows you exactly how to recreate the Supabase API and developer experience.
+Do you wish you could interact with your MySQL database via API/SDK like Supabase? Look no further! This project shows you exactly how to recreate the Supabase/PostgREST API and developer experience. [Try the demo](https://mysql-postgrest.zuplopreview.net/).
 
 ## Installation
 
@@ -62,7 +62,7 @@ npm run dev
 
 PostgREST requests are sent from the front-end to a catch-all route which invokes a serverless function. That function translates the request into a SQL query and executes it against your Neon database. The results are returned as a JSON.
 
-NOTE: I wouldn't recommend actually performing SQL queries from your front-end - I bundled this together for demonstration purposes. You are essentially providing a door for malicious actors to interact with your database from your front-end. Instead, I would host the PostgREST API in a separate project (and protected behind a gateway), and call it from CRUD RESTful serverless functions on this project. Alternatively, I think you can implement stuff like row-level security and anon keys to make this method more secure, which is what Supabase does.
+NOTE: Be careful performing SQL queries from your front-end - I bundled this together for demonstration purposes. I would host the PostgREST API in a separate project (and protected behind a gateway), and call it from CRUD RESTful serverless functions on this project. Alternatively, I think you can implement stuff like row-level security and anon keys to make this method more secure, which is what Supabase does.
 
 ## Tools
 
