@@ -16,6 +16,11 @@ const nextConfig: NextConfig = {
             from: "node_modules/@subzerocloud/rest/subzero_wasm_bg.wasm",
             to: "server/vendor-chunks/subzero_wasm_bg.wasm",
           },
+          // error is triggered during the build if the file is not there (but not actually used from here)
+          {
+            from: "node_modules/@subzerocloud/rest/subzero_wasm_bg.wasm",
+            to: "server/src/app/api/[...query]/subzero_wasm_bg.wasm",
+          },
         ],
       })
     );
